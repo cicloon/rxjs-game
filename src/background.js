@@ -6,7 +6,7 @@ const getStars$ = (width, height, speed) => (
       {
         x: parseInt(Math.random() * width, 10),
         y: parseInt(Math.random() * height, 10),
-        size: Math.random() * 3 + 1
+        size: Math.random() * 3 + 1,
       }
     ))
     .toArray()
