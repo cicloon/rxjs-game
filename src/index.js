@@ -12,8 +12,10 @@ const paintStars = (stars) => {
   ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = '#ffffff';
-  stars.forEach((star) => {
-    ctx.fillRect(star.x, star.y, star.size, star.size);
+  stars.forEach((starLayer) => {
+    starLayer.forEach((star) => {
+      ctx.fillRect(star.x, star.y, star.size, star.size);
+    });
   });
 };
 
