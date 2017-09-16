@@ -9,65 +9,102 @@ const keyMapping = {
   backward: 'a',
 };
 
+const inverseKeymapping = Object.keys(keyMapping).reduce((acc, key) => {
+  acc[keyMapping[key]] = key; // eslint-disable-line
+  return acc;
+}, {});
 
-const keyDown$ = Rx.Observable.fromEvent(document, 'keypress')
-    .map(e => (e.key))
-    .filter(key => mappedKeys.includes(key));
+const compareKeyEvents = ((e1, e2) => {
+  const keyEventTos = (e) => (`${e.which}${e.type}`);
+  return keyEventTos(e1) === keyEventTos(e2);
+});
 
-const keyUp$ = Rx.Observable.fromEvent(document, 'keyup')
-    .map(e => (e.key))
-    .filter(key => mappedKeys.includes(key));
+const keyUp$ = Rx.Observable.fromEvent(document, 'keyup');
+    // .map(e => (e.key))
+    // .filter(key => mappedKeys.includes(key));
 
-const movement$ = Rx.Observable.interval(250);
+const keyDown$ = Rx.Observable.fromEvent(document, 'keydown');
+    // .map(e => (e.key))
+    // .filter(key => mappedKeys.includes(key));
 
-const combineFunc = (_, keyUp, keyDown) => (keyUp !== keyDown);
+const pressedKeys$ = Rx.Observable.merge(keyDown$, keyUp$)
+  .distinctUntilChanged(compareKeyEvents)
+  .scan((pressedKeys, keyEvent) => {
+    const { type, key } = keyEvent;
+    let newPressedKeys;
+    switch (type) {
+      case 'keydown':
+        newPressedKeys = new Set([...pressedKeys, key]);
+        break;
 
+      case 'keyup':
+        newPressedKeys = new Set([...pressedKeys]);
+        newPressedKeys.delete(key);
+        break;
+
+      default:
+        newPressedKeys = pressedKeys;
+    }
+    return newPressedKeys;
+  }, new Set())
+  ;
+
+
+pressedKeys$.subscribe((e) => { console.log(e.entries()); });
+
+const movement$ = Rx.Observable.interval(30);
+
+const combineFunc = (_, pressedKeys) => (pressedKeys);
+
+const initialVelocity = {
+  forward: 0.0, backward: 0.0, up: 0.0, down: 0.0,
+};
+
+const handleVelocity = (velocity, increasing) => {
+  let newVelocity = velocity;
+  if (newVelocity < 2 && increasing) newVelocity += 0.1;
+  else if (newVelocity > 0 && !increasing) newVelocity -= 0.1;
+
+  if (newVelocity > 2) newVelocity = 2;
+  if (newVelocity < 0) newVelocity = 0;
+
+  return newVelocity;
+};
 
 const velocity$ = Rx.Observable
-  .combineLatest(movement$, keyUp$, keyDown$, combineFunc)
-  .sampleTime(250)
-  .scan((velocity, increasing) => {
-    let newVelocity = velocity;
-    if (newVelocity < 2 && increasing) newVelocity += 0.1;
-    else if (newVelocity > 0 && !increasing) newVelocity -= 0.1;
-
-    if (newVelocity > 2) newVelocity = 2;
-    if (newVelocity < 0) newVelocity = 0;
-
-    return newVelocity;
-  }, 0);
-
-
-velocity$.subscribe((v) => console.log(v));
+  .combineLatest(movement$, pressedKeys$, combineFunc)
+  .sampleTime(30)
+  .scan((velocity, pressedKeys) => (
+    mappedKeys.reduce((acc, key) => {
+      const direction = inverseKeymapping[key];
+      // eslint-disable-next-line
+      acc[direction] = handleVelocity(velocity[direction], pressedKeys.has(key));
+      return acc;
+    }, {})
+  ), initialVelocity);
 
 
 export default (width, height) => (
-  Rx.Observable.fromEvent(document, 'keypress')
-    .filter(e => mappedKeys.includes(e.key))
-    .mergeMap((e) => {
-      console.log(e);
-      return velocity$.map((velocity) => {
-        console.log(velocity);
-        return { key: e.key, velocity };
-      });
-    })
-    .scan(({ x, y }, e) => {
-      switch (e.key) {
-        case keyMapping.up:
-          return { x, y: y <= 0 ? 0 : y - e.velocity };
+    velocity$
+    .scan(({ x, y }, velocityMapping) => (
+      Object.keys(velocityMapping).reduce(({ x: newX, y: newY }, direction) => {
+        switch (direction) {
+          case 'up':
+            return { x: newX, y: newY <= 0 ? 0 : newY - velocityMapping[direction] };
 
-        case keyMapping.down:
-          return { x, y: y >= height ? height : y + e.velocity };
+          case 'down':
+            return { x: newX, y: newY >= height ? height : newY + velocityMapping[direction] };
 
-        case keyMapping.forward:
-          return { x: x >= width ? width : x + e.velocity, y };
+          case 'forward':
+            return { x: newX >= width ? width : newX + velocityMapping[direction], y: newY };
 
-        case keyMapping.backward:
-          return { x: x <= 0 ? 0 : x - e.velocity, y };
+          case 'backward':
+            return { x: newX <= 0 ? 0 : newX - velocityMapping[direction], y: newY };
 
-        default:
-          return { x, y };
-      }
-    }, { x: 20, y: height / 2 })
+          default:
+            return { x: newX, y: newY };
+        }
+      }, { x, y })
+    ), { x: 20, y: height / 2 })
 );
 
