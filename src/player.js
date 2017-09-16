@@ -1,4 +1,5 @@
 import Rx from 'rxjs';
+import pressedKeys$ from './keyHandling';
 
 const mappedKeys = ['a', 'w', 's', 'd'];
 
@@ -13,44 +14,6 @@ const inverseKeymapping = Object.keys(keyMapping).reduce((acc, key) => {
   acc[keyMapping[key]] = key; // eslint-disable-line
   return acc;
 }, {});
-
-const compareKeyEvents = ((e1, e2) => {
-  const keyEventTos = (e) => (`${e.which}${e.type}`);
-  return keyEventTos(e1) === keyEventTos(e2);
-});
-
-const keyUp$ = Rx.Observable.fromEvent(document, 'keyup');
-    // .map(e => (e.key))
-    // .filter(key => mappedKeys.includes(key));
-
-const keyDown$ = Rx.Observable.fromEvent(document, 'keydown');
-    // .map(e => (e.key))
-    // .filter(key => mappedKeys.includes(key));
-
-const pressedKeys$ = Rx.Observable.merge(keyDown$, keyUp$)
-  .distinctUntilChanged(compareKeyEvents)
-  .scan((pressedKeys, keyEvent) => {
-    const { type, key } = keyEvent;
-    let newPressedKeys;
-    switch (type) {
-      case 'keydown':
-        newPressedKeys = new Set([...pressedKeys, key]);
-        break;
-
-      case 'keyup':
-        newPressedKeys = new Set([...pressedKeys]);
-        newPressedKeys.delete(key);
-        break;
-
-      default:
-        newPressedKeys = pressedKeys;
-    }
-    return newPressedKeys;
-  }, new Set())
-  ;
-
-
-pressedKeys$.subscribe((e) => { console.log(e.entries()); });
 
 const movement$ = Rx.Observable.interval(30);
 
@@ -81,7 +44,8 @@ const velocity$ = Rx.Observable
       acc[direction] = handleVelocity(velocity[direction], pressedKeys.has(key));
       return acc;
     }, {})
-  ), initialVelocity);
+  ), initialVelocity)
+  .startWith(initialVelocity);
 
 
 export default (width, height) => (
