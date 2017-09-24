@@ -1,6 +1,7 @@
 import Rx from 'rxjs';
 import getBackground from './background';
 import getPlayer from './player';
+import getshoting from './shooting';
 
 const canvas = document.createElement('canvas');
 const ctx = canvas.getContext('2d');
@@ -35,17 +36,27 @@ const paintSpaceship = ({ x, y }) => {
   paintTriangle(x, y, 30, 20, '#00ff00', 'right');
 };
 
+const paintshots = (shots) => {
+  ctx.fillStyle = '#ff0000';
+  shots.forEach((shot) => {
+    ctx.fillRect(shot.x, shot.y, 10, 3);
+  });
+};
+
 const background$ = getBackground(canvas.width, canvas.height, 50);
 const player$ = getPlayer(canvas.width, canvas.height, 2);
+const shoting$ = getshoting(player$, canvas.width);
 
 const game$ = Rx.Observable.combineLatest(
-  player$, background$,
-  (player, background) => ({ background, player })
+  player$, background$, shoting$,
+  (player, background, shots) => ({ background, player, shots })
 );
 
 const renderScene = (actors) => {
   paintStars(actors.background);
   paintSpaceship(actors.player);
+  // console.log(actors.shots);
+  paintshots(actors.shots);
 };
 
 game$.subscribe(renderScene);
