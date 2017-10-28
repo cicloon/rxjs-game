@@ -53,8 +53,8 @@ const paintEnemies = (enemies) => {
 
 const background$ = getBackground(canvas.width, canvas.height, 50);
 const player$ = getPlayer(canvas.width, canvas.height, 2);
-const enemies$ = getEnemies(canvas.width, canvas.height);
 const shoting$ = getshoting(player$, canvas.width);
+const enemies$ = getEnemies(canvas.width, canvas.height, shoting$);
 
 const game$ = Rx.Observable.combineLatest(
   player$, background$, shoting$, enemies$,
