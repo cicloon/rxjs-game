@@ -1,7 +1,9 @@
 import RX from 'rxjs';
 
+const MAX_STARS = 200;
+
 const getStars$ = (width, height, speed, minSize, maxSize) => (
-  RX.Observable.range(1, 200)
+  RX.Observable.range(1, MAX_STARS)
     .map(() => (
       {
         x: parseInt(Math.random() * width, 10),
